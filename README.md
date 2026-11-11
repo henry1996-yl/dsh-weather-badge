@@ -15,9 +15,6 @@ DeepSeek Harness（DSH）自定义插件：**Agent 工具 + 账号旁时钟天�
 
 ![账号旁徽章](docs/badge.png)
 
-点徽章后主区域展开的完整天气面板（当前天气 + 7 天预报 + 城市搜索）：
-
-![天气面板](docs/panel.png)
 
 ## 安装
 
