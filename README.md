@@ -15,23 +15,6 @@ DeepSeek Harness（DSH）自定义插件：**Agent 工具 + 账号旁时钟天�
 
 ![账号旁徽章](docs/badge.png)
 
-
-## 安装
-
-在 DSH 的「设置 → 插件」或插件管理里，以**本地目录**方式安装本包：
-
-```
-D:\DSH\自定义插件\dsh-weather-badge
-```
-
-也可以用 CLI：
-
-```
-dsh plugin --profile desktop add D:\DSH\自定义插件\dsh-weather-badge
-```
-
-安装后如界面未出现天气卡片，刷新一次 Web 页面即可（客户端 bundle 随页面加载）。
-
 ## 使用
 
 ### 对话中（Agent 工具）
