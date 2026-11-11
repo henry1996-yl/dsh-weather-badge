@@ -1,0 +1,45 @@
+{
+  "name": "dsh-weather-badge",
+  "version": "1.0.0",
+  "description": "天气预报插件：给 Agent 一个 weather 工具，并在侧栏账号旁常驻圆形时钟 + 日期 + 天气徽章，点开即主面板天气页（Open-Meteo 免费数据，无需 API Key）· Weather tool + clock/weather badge for DeepSeek Harness",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "docs",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "weather",
+    "forecast",
+    "open-meteo",
+    "天气",
+    "天气预报"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=22",
+    "dsh": ">=0.2.0-rc.1 <0.3.0-0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ],
+      "platform": "web"
+    }
+  }
+}
