@@ -1,0 +1,6 @@
+# dsh-weather-badge bundle layer: mount the weather plugin (lib/index.js via the
+# package root export). The browser half is picked up by dsh-client-modules
+# through the package's dsh.client declaration.
+- insert:
+    - id: dsh-weather-badge
+      name: dsh-weather-badge
