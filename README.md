@@ -102,6 +102,12 @@ dsh plugin --profile desktop add git+https://github.com/henry1996-yl/dsh-weather
 本仓库自带一份符合插件市场索引格式 1 的索引文件 [`market/index.json`](market/index.json)。在**插件 → 发现 → 添加索引源**里填入它的地址：
 
 ```
+https://cdn.jsdelivr.net/gh/henry1996-yl/dsh-weather-badge@main/market/index.json
+```
+
+如果 jsDelivr 不可用，可以改用 GitHub 直连地址：
+
+```
 https://raw.githubusercontent.com/henry1996-yl/dsh-weather-badge/main/market/index.json
 ```
 
