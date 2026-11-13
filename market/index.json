@@ -58,7 +58,7 @@
         "en": "A weather tool for the agent plus a persistent clock and weather dial beside the sidebar account, with six dial themes, circle or square shapes, five fonts, network time, and Open-Meteo to MET Norway to wttr.in fallback with offline cache.",
         "zh": "给 Agent 的 weather 工具，侧栏账号旁常驻时钟与天气表盘：六款表盘主题、圆形或方形、五种字体、网络时间，预报源 Open-Meteo → MET Norway → wttr.in 三级自动切换并带离线缓存。"
       },
-      "icon": "https://raw.githubusercontent.com/henry1996-yl/dsh-weather-badge/main/docs/badge.png",
+      "icon": "https://cdn.jsdelivr.net/gh/henry1996-yl/dsh-weather-badge@main/docs/badge.png",
       "author": "henry1996-yl",
       "homepage": "https://github.com/henry1996-yl/dsh-weather-badge",
       "repository": {
