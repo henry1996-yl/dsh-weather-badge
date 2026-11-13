@@ -75,6 +75,43 @@ DeepSeek Harness（DSH）自定义插件：**Agent 工具 + 账号旁时钟天�
 node --test "tests/*.test.mjs"
 ```
 
+## 安装
+
+### 从 Git 安装（最新代码）
+
+在 DSH 的**插件 → 已安装 → 添加插件**里选择「从链接安装」，填入：
+
+```
+git+https://github.com/henry1996-yl/dsh-weather-badge
+```
+
+要固定到某个提交（推荐，避免跟到未测试的改动）：
+
+```
+git+https://github.com/henry1996-yl/dsh-weather-badge#<40 位提交 SHA>
+```
+
+也可以在终端里安装：
+
+```bash
+dsh plugin --profile desktop add git+https://github.com/henry1996-yl/dsh-weather-badge
+```
+
+### 通过插件市场索引安装
+
+本仓库自带一份符合插件市场索引格式 1 的索引文件 [`market/index.json`](market/index.json)。在**插件 → 发现 → 添加索引源**里填入它的地址：
+
+```
+https://raw.githubusercontent.com/henry1996-yl/dsh-weather-badge/main/market/index.json
+```
+
+添加后「发现」页即可搜到「天气徽章与时钟表盘」并直接安装；索引里固定了提交 SHA，安装的就是这份 README 对应的版本。
+
+### 本地开发挂载
+
+在 `~/.dsh/profiles/desktop/cordis.yml` 或 `package.json` 的 `bundles` 里把本目录作为 `link:` 依赖加入，然后重启 DSH 或禁用→启用本插件。
+
+安装/更新后在**插件**页把本插件禁用再一次启用即可生效（无需重启应用）。
 ## 卸载
 
 在插件管理里移除 `dsh-weather-badge` 即可；工具与侧栏卡片随插件停用一起消失。
