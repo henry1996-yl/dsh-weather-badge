@@ -9,12 +9,15 @@ import { fileURLToPath } from 'node:url'
 const CLIENT = fileURLToPath(new URL('../lib/client.js', import.meta.url))
 
 /** 把整份 client.js 装进 vm，返回被临时暴露出来的内部符号。 */
-function loadClient(store) {
+function loadClient(store, fetchImpl) {
   let code = fs.readFileSync(CLIENT, 'utf8')
   code = code.replace('    exports.apply = apply',
     '    exports.__test = { AnalogClock: AnalogClock, WeatherDial: WeatherDial, DIAL_THEMES: DIAL_THEMES,'
     + ' FONT_CHOICES: FONT_CHOICES, EN: EN, ZH: ZH, localeIsZh: localeIsZh, fetchForecastWttr: fetchForecastWttr, wmoOfWwo: wmoOfWwo, parseTimeApi: parseTimeApi, parseCloudflareTrace: parseCloudflareTrace,'
-    + ' locateByIpFrom: locateByIpFrom, currentTime: currentTime, netTime: netTime, syncNetworkTime: syncNetworkTime }\n'
+    + ' locateByIpFrom: locateByIpFrom, currentTime: currentTime, netTime: netTime, syncNetworkTime: syncNetworkTime,'
+    + ' wmoOfMetno: wmoOfMetno, fetchForecast: fetchForecast, fetchForecastFrom: fetchForecastFrom, fetchForecastMetno: fetchForecastMetno,'
+    + ' fetchForecastCached: fetchForecastCached, saveLastForecast: saveLastForecast, loadLastForecast: loadLastForecast,'
+    + ' sourceHealth: sourceHealth, sourceReady: sourceReady, markSourceFailed: markSourceFailed, SOURCE_LABELS: SOURCE_LABELS }\n'
     + '    exports.apply = apply')
   const mkEl = () => ({ style: {}, dataset: {}, appendChild() {}, remove() {}, setAttribute() {}, isConnected: false, querySelector: () => null, querySelectorAll: () => [], textContent: '' })
   const document = { createElement: mkEl, querySelector: () => null, querySelectorAll: () => [], head: mkEl(), body: mkEl() }
@@ -35,7 +38,7 @@ function loadClient(store) {
     AbortController, AbortSignal, requestAnimationFrame: (fn) => fn(),
     CustomEvent: class { constructor(type, opts) { this.type = type; this.detail = opts && opts.detail } },
     MutationObserver: class { observe() {} disconnect() {} },
-    fetch: () => Promise.reject(new Error('offline in tests')),
+    fetch: fetchImpl || (() => Promise.reject(new Error('offline in tests'))),
     React: react,
   }
   ctx.globalThis = ctx
@@ -151,4 +154,104 @@ test('IP 定位在某家失败时回落到下一家', async () => {
   await assert.rejects(promise, /all IP locators failed/)
   calls += 1
   assert.equal(calls, 1)
+})
+test('MET Norway 的 symbol_code 能映射到 WMO 大类', () => {
+  const T = loadClient({})
+  assert.equal(T.wmoOfMetno('clearsky_day'), 0)
+  assert.equal(T.wmoOfMetno('fair_night'), 1)
+  assert.equal(T.wmoOfMetno('partlycloudy_day'), 2)
+  assert.equal(T.wmoOfMetno('cloudy'), 3)
+  assert.equal(T.wmoOfMetno('fog'), 45)
+  assert.equal(T.wmoOfMetno('heavyrain'), 65)
+  assert.equal(T.wmoOfMetno('lightrainshowers_night'), 61)
+  assert.equal(T.wmoOfMetno('heavysnow'), 75)
+  assert.equal(T.wmoOfMetno('rainandthunder'), 95)
+  assert.equal(T.wmoOfMetno(''), 3)
+})
+
+/** 造一个假 fetch：按 URL 前缀返回对应报文，记录调用顺序。 */
+function fakeFetch(routes) {
+  const calls = []
+  const impl = (url) => {
+    calls.push(String(url))
+    for (const prefix of Object.keys(routes)) {
+      if (String(url).startsWith(prefix)) {
+        const route = routes[prefix]
+        if (route instanceof Error) return Promise.reject(route)
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(route) })
+      }
+    }
+    return Promise.reject(new Error('no route for ' + url))
+  }
+  impl.calls = calls
+  return impl
+}
+
+/** 以「现在」为基准造 met.no 序列，避免用例随真实时间失效。 */
+function makeMetno() {
+  const at = (hours) => new Date(Date.now() + hours * 3600 * 1000).toISOString()
+  return {
+    properties: {
+      timeseries: [
+        { time: at(0), data: {
+          instant: { details: { air_temperature: 23.4, relative_humidity: 83.8, wind_speed: 2.5, wind_from_direction: 180 } },
+          next_1_hours: { summary: { symbol_code: 'lightrain' }, details: { precipitation_amount: 0.6 } },
+        } },
+        { time: at(4), data: {
+          instant: { details: { air_temperature: 25.1, relative_humidity: 70 } },
+          next_6_hours: { summary: { symbol_code: 'cloudy' }, details: { precipitation_amount: 1.2 } },
+        } },
+        { time: at(28), data: {
+          instant: { details: { air_temperature: 21.0, relative_humidity: 90 } },
+          next_6_hours: { summary: { symbol_code: 'clearsky_day' }, details: { precipitation_amount: 0 } },
+        } },
+      ],
+    },
+  }
+}
+
+const WMO_SHAPE = {
+  current: { time: '2026-11-13T16:00', temperature_2m: 23.7, apparent_temperature: 25, relative_humidity_2m: 82, weather_code: 51, wind_speed_10m: 5, is_day: 1 },
+  hourly: { time: ['2026-11-13T16:00'], temperature_2m: [23.7] },
+  daily: { time: ['2026-11-13'], weather_code: [61], temperature_2m_max: [28.1], temperature_2m_min: [19.9], precipitation_probability_max: [98] },
+}
+
+test('MET Norway 的响应能解析成统一结构', async () => {
+  const T = loadClient({}, fakeFetch({ 'https://api.met.no': makeMetno() }))
+  const data = await T.fetchForecastMetno({ name: '中山', latitude: 22.52, longitude: 113.39 })
+  assert.equal(data.source, 'metno')
+  assert.equal(data.current.weatherCode, 61)
+  assert.equal(Math.round(data.current.windSpeed), 9)
+  assert.equal(data.hours.length, 3)
+  assert.equal(data.daily.length, 2)
+  assert.equal(data.daily[0].tempMax, 25.1)
+  assert.equal(data.daily[0].tempMin, 23.4)
+  assert.ok(data.daily[0].precipitationProbability > 0, '降水概率由降水量换算')
+})
+
+test('主源失败会自动换到下一家，并给失败的源打冷却', async () => {
+  const T = loadClient({}, fakeFetch({
+    'https://api.open-meteo.com': new Error('blocked'),
+    'https://api.met.no': makeMetno(),
+  }))
+  const data = await T.fetchForecast({ name: '中山', latitude: 22.52, longitude: 113.39 })
+  assert.equal(data.source, 'metno')
+  assert.equal(T.sourceReady('open-meteo'), false)
+  assert.equal(T.sourceReady('metno'), true)
+  assert.equal(T.SOURCE_LABELS.metno, 'MET Norway')
+})
+
+test('三家源全挂时退回上次成功的缓存并标记离线', async () => {
+  const store = {}
+  const good = loadClient(store, fakeFetch({ 'https://api.open-meteo.com': WMO_SHAPE }))
+  const location = { name: '中山', latitude: 22.52, longitude: 113.39 }
+  const fresh = await good.fetchForecastCached(location, true)
+  assert.equal(fresh.source, 'open-meteo')
+  assert.equal(fresh.stale, undefined)
+
+  const offline = loadClient(store, () => Promise.reject(new Error('offline')))
+  const cached = await offline.fetchForecastCached(location, true)
+  assert.equal(cached.stale, true)
+  assert.equal(cached.current.temperature, 23.7)
+  assert.match(String(cached.staleReason), /all forecast sources failed/)
 })
