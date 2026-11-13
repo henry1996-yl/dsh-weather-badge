@@ -7,7 +7,7 @@ DeepSeek Harness（DSH）自定义插件：**Agent 工具 + 账号旁时钟天�
 - **右侧栏天气标签页**：右侧 Sidebar 引导页也有「天气预报」入口，可停靠/浮窗查看。
 - **`weather` 工具（模型可调用）**：对话里问"明天上海穿什么"，模型会调用本工具查询实时天气与逐日预报，再组织回答。
 
-数据来自 [Open-Meteo](https://open-meteo.com/)（免费、无需 API Key）；自动定位按公网 IP 粗略定位（ipwho.is → geojs.io → ipinfo.io → ipapi.co 依次回落）；显示时间可切换为网络时间（timeapi.io，备用 Cloudflare trace）。
+数据来自 [Open-Meteo](https://open-meteo.com/)（免费、无需 API Key），线路不通时自动退到 [wttr.in](https://wttr.in/)（3 天、3 小时一档）；自动定位按公网 IP 粗略定位（ipwho.is → geojs.io → ipinfo.io → ipapi.co 依次回落）；显示时间可切换为网络时间（timeapi.io，备用 Cloudflare trace）。
 
 ## 界面预览
 
@@ -44,7 +44,7 @@ DeepSeek Harness（DSH）自定义插件：**Agent 工具 + 账号旁时钟天�
   - 整体扁平化融入 Harness 界面：透明底、无发光 / 毛玻璃 / 投影，仅 hover 时淡灰底；徽章容器固定宽度，不会随每秒走秒重排。
   - **可切换的表盘主题**：天气面板「设置」里的「表盘主题」一行可选 6 款——白金 / 雾蓝 / 暖米 / 薄紫 / 石墨 / 青瓷。每款是完整的圆盘画面：白色到同色系浅彩的多段径向渐变面料 + 顶部高光 + 一道外圈细边 + 60 格刻度（每 5 格加粗）+ 12/3/6/9 暖金衬线数字 + 锥形指针（时针深墨、分针同色系、秒针红），浅色五款白底深字清晰可读，石墨款为深色底盘配浅字。全部为内联矢量，不依赖图片资源。选择写入 localStorage（dsh-weather-badge.dial.v3），账号旁徽章与面板预览即时同步，默认「白金」；
   - **字体可切换**：面板「字体」一行可选楷体 / 宋体 / Times / 黑体 / 等宽，徽章文字与表盘数字同步生效（localStorage `dsh-weather-badge.font.v1`）；
-  - **数据源**：天气与预报来自 Open-Meteo（免费、无需 Key），IP 定位依次回落 ipwho.is → geojs.io → ipinfo.io → ipapi.co，时间校准来自 timeapi.io（备用 Cloudflare trace），任何一家不可用都会自动换下一家；
+  - **数据源**：天气与预报优先 Open-Meteo（免费、无需 Key），请求失败或线路不通时自动退到 wttr.in（3 天、3 小时一档，天气码经 WWO→WMO 映射）；IP 定位依次回落 ipwho.is → geojs.io → ipinfo.io → ipapi.co；时间校准来自 timeapi.io（备用 Cloudflare trace），任何一家不可用都会自动换下一家；
 - **设置收纳**：面板里的表盘主题、字体、时间源、日期条、两个表盘形状全部收进「设置」抽屉，点一下标题展开、再点收起，默认收起，展开状态记在 localStorage `dsh-weather-badge.settings-open.v1`；
 - **时间源可切换**：面板「时间源」一行可选本机 / 网络——选网络时向授时接口取 UTC 与本机时钟的偏差并叠加到显示时间上，本机时钟不准也不会走偏，每 10 分钟重新校准一次；取不到网络时间时自动回退本机时钟。开关写入 localStorage `dsh-weather-badge.nettime.v1`，默认开启；
   - **时钟表盘形状可切换**：面板「时钟表盘」一行可选圆形 / 方形——方形是同一套渐变、外框、内衬与高光的圆角卡片版本，指针与数字位置不变，选择写入 localStorage `dsh-weather-badge.clockshape.v1`，默认圆形（主题缩略图同步跟随）；
