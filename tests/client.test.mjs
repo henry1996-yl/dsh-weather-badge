@@ -13,7 +13,7 @@ function loadClient(store) {
   let code = fs.readFileSync(CLIENT, 'utf8')
   code = code.replace('    exports.apply = apply',
     '    exports.__test = { AnalogClock: AnalogClock, WeatherDial: WeatherDial, DIAL_THEMES: DIAL_THEMES,'
-    + ' FONT_CHOICES: FONT_CHOICES, parseTimeApi: parseTimeApi, parseCloudflareTrace: parseCloudflareTrace,'
+    + ' FONT_CHOICES: FONT_CHOICES, EN: EN, ZH: ZH, localeIsZh: localeIsZh, parseTimeApi: parseTimeApi, parseCloudflareTrace: parseCloudflareTrace,'
     + ' locateByIpFrom: locateByIpFrom, currentTime: currentTime, netTime: netTime, syncNetworkTime: syncNetworkTime }\n'
     + '    exports.apply = apply')
   const mkEl = () => ({ style: {}, dataset: {}, appendChild() {}, remove() {}, setAttribute() {}, isConnected: false, querySelector: () => null, querySelectorAll: () => [], textContent: '' })
@@ -91,6 +91,18 @@ test('方形表盘使用圆角矩形轮廓，圆形表盘用圆形轮廓', () =>
   assert.ok(circle.includes('<circle'), 'circle shape keeps a circle face')
   assert.ok(!square.includes('<circle') || square.includes('<rect'), 'square shape draws a rect face')
   assert.ok(square.includes('<rect'), 'square shape draws rects')
+})
+
+test('中英文字典键完全对齐，语言判断可区分', () => {
+  const T = loadClient({})
+  assert.deepEqual(Object.keys(T.ZH).sort(), Object.keys(T.EN).sort())
+  for (const key of Object.keys(T.ZH)) {
+    assert.equal(typeof T.ZH[key], 'string')
+    assert.equal(typeof T.EN[key], 'string')
+    assert.ok(T.EN[key].length > 0, key + ' has an English string')
+  }
+  assert.equal(T.localeIsZh((k) => T.ZH[k] || k), true)
+  assert.equal(T.localeIsZh((k) => T.EN[k] || k), false)
 })
 
 test('时间解析：timeapi.io 与 Cloudflare trace 两种格式', () => {
