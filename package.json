@@ -1,7 +1,7 @@
 {
   "name": "dsh-weather-badge",
-  "version": "1.0.0",
-  "description": "天气预报插件：给 Agent 一个 weather 工具，并在侧栏账号旁常驻圆形时钟 + 日期 + 天气徽章，点开即主面板天气页（Open-Meteo 免费数据，无需 API Key）· Weather tool + clock/weather badge for DeepSeek Harness",
+  "version": "1.1.0",
+  "description": "天气预报插件：给 Agent 一个 weather 工具，并在侧栏账号旁常驻时钟与天气表盘，点开即主面板天气页（Open-Meteo 免费数据，无需 API Key）· Weather tool + clock/weather dials for DeepSeek Harness",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -22,10 +22,23 @@
     "weather",
     "forecast",
     "open-meteo",
+    "clock",
     "天气",
     "天气预报"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/henry1996-yl/dsh-weather-badge.git"
+  },
+  "homepage": "https://github.com/henry1996-yl/dsh-weather-badge#readme",
+  "bugs": {
+    "url": "https://github.com/henry1996-yl/dsh-weather-badge/issues"
+  },
+  "author": "henry1996-yl",
   "license": "MIT",
+  "scripts": {
+    "test": "node --test tests/"
+  },
   "engines": {
     "node": ">=22",
     "dsh": ">=0.2.0-rc.1 <0.3.0-0"
