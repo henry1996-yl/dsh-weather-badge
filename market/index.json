@@ -1,0 +1,101 @@
+{
+  "format": 1,
+  "title": {
+    "en": "DSH Weather Badge",
+    "zh": "DSH 天气徽章"
+  },
+  "description": {
+    "en": "Community plugin index for the DSH weather badge: clock and weather dials with a three-level forecast source fallback.",
+    "zh": "DSH 天气徽章的社区插件索引：时钟与天气双表盘，预报源三级自动切换。"
+  },
+  "metadata": {
+    "categories": {
+      "weather": {
+        "title": {
+          "en": "Weather",
+          "zh": "天气"
+        }
+      },
+      "ui": {
+        "title": {
+          "en": "Interface",
+          "zh": "界面"
+        }
+      }
+    },
+    "labels": {
+      "dial": {
+        "title": {
+          "en": "Dials",
+          "zh": "表盘"
+        }
+      },
+      "forecast": {
+        "title": {
+          "en": "Forecast",
+          "zh": "预报"
+        }
+      }
+    },
+    "sortKeys": {
+      "updated": {
+        "title": {
+          "en": "Last updated",
+          "zh": "最近更新"
+        },
+        "order": "desc"
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "dsh-weather-badge",
+      "title": {
+        "en": "Weather Badge & Clock Dials",
+        "zh": "天气徽章与时钟表盘"
+      },
+      "description": {
+        "en": "A weather tool for the agent plus a persistent clock and weather dial beside the sidebar account, with six dial themes, circle or square shapes, five fonts, network time, and Open-Meteo to MET Norway to wttr.in fallback with offline cache.",
+        "zh": "给 Agent 的 weather 工具，侧栏账号旁常驻时钟与天气表盘：六款表盘主题、圆形或方形、五种字体、网络时间，预报源 Open-Meteo → MET Norway → wttr.in 三级自动切换并带离线缓存。"
+      },
+      "icon": "https://raw.githubusercontent.com/henry1996-yl/dsh-weather-badge/main/docs/badge.png",
+      "author": "henry1996-yl",
+      "homepage": "https://github.com/henry1996-yl/dsh-weather-badge",
+      "repository": {
+        "url": "https://github.com/henry1996-yl/dsh-weather-badge"
+      },
+      "metadata": {
+        "category": "weather",
+        "keywords": [
+          "weather",
+          "forecast",
+          "clock",
+          "dial",
+          "badge",
+          "天气"
+        ],
+        "labels": [
+          "dial",
+          "forecast"
+        ],
+        "sortKeys": {
+          "updated": 1794561226
+        }
+      },
+      "versions": [
+        {
+          "version": "1.1.0",
+          "publishTimestamp": 1794561226,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/henry1996-yl/dsh-weather-badge.git",
+            "commit": "c5d9f7eaeb1e655dd4dd64a4816903c95663129a"
+          },
+          "engines": {
+            "dsh": ">=0.2.0-rc.1 <0.3.0-0"
+          }
+        }
+      ]
+    }
+  ]
+}
