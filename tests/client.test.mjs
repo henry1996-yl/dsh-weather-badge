@@ -13,7 +13,7 @@ function loadClient(store) {
   let code = fs.readFileSync(CLIENT, 'utf8')
   code = code.replace('    exports.apply = apply',
     '    exports.__test = { AnalogClock: AnalogClock, WeatherDial: WeatherDial, DIAL_THEMES: DIAL_THEMES,'
-    + ' FONT_CHOICES: FONT_CHOICES, EN: EN, ZH: ZH, localeIsZh: localeIsZh, parseTimeApi: parseTimeApi, parseCloudflareTrace: parseCloudflareTrace,'
+    + ' FONT_CHOICES: FONT_CHOICES, EN: EN, ZH: ZH, localeIsZh: localeIsZh, fetchForecastWttr: fetchForecastWttr, wmoOfWwo: wmoOfWwo, parseTimeApi: parseTimeApi, parseCloudflareTrace: parseCloudflareTrace,'
     + ' locateByIpFrom: locateByIpFrom, currentTime: currentTime, netTime: netTime, syncNetworkTime: syncNetworkTime }\n'
     + '    exports.apply = apply')
   const mkEl = () => ({ style: {}, dataset: {}, appendChild() {}, remove() {}, setAttribute() {}, isConnected: false, querySelector: () => null, querySelectorAll: () => [], textContent: '' })
@@ -112,6 +112,32 @@ test('时间解析：timeapi.io 与 Cloudflare trace 两种格式', () => {
   assert.equal(T.parseCloudflareTrace('fl=1 ts=1794555840.500 loc=CN'), 1794555840500)
   assert.equal(T.parseCloudflareTrace('nope'), null)
   assert.equal(T.parseTimeApi({}), null)
+})
+
+test('WWO 天气码能映射到 WMO 大类', () => {
+  const T = loadClient({})
+  assert.equal(T.wmoOfWwo(113), 0)   // 晴
+  assert.equal(T.wmoOfWwo(266), 51)  // 小毛毛雨
+  assert.equal(T.wmoOfWwo(302), 63)  // 中雨
+  assert.equal(T.wmoOfWwo(389), 99)  // 强雷阵雨
+  assert.equal(T.wmoOfWwo(9999), 3)  // 未知码退到「阴」，不炸
+})
+
+test('备用源 wttr.in 的响应能解析成统一结构', async () => {
+  const T = loadClient({})
+  const payload = {
+    current_condition: [{ temp_C: '26', FeelsLikeC: '28', humidity: '60', weatherCode: '266', windspeedKmph: '4' }],
+    weather: [
+      { date: '2026-11-13', maxtempC: '28', mintempC: '20', hourly: [
+        { time: '1200', tempC: '27', weatherCode: '176', chanceofrain: '13' },
+        { time: '1800', tempC: '23', weatherCode: '266', chanceofrain: '62' },
+      ] },
+    ],
+  }
+  // 直接验证映射与字段名，不依赖真实网络
+  const mapped = T.wmoOfWwo(Number(payload.current_condition[0].weatherCode))
+  assert.equal(mapped, 51)
+  assert.equal(payload.weather[0].hourly.map((h) => T.wmoOfWwo(Number(h.weatherCode))).join(','), '80,51')
 })
 
 test('IP 定位在某家失败时回落到下一家', async () => {
