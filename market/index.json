@@ -89,7 +89,7 @@
           "source": {
             "type": "git",
             "url": "https://github.com/henry1996-yl/dsh-weather-badge.git",
-            "commit": "d52cfd51c9efe54d7ba3a24f7eb9c3c2661087e0"
+            "commit": "da7ca14f4ec1cc18e2dcfa840d410f3117b355dc"
           },
           "engines": {
             "dsh": ">=0.2.2-rc.2 <0.3.0-0"
