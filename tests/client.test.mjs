@@ -18,7 +18,8 @@ function loadClient(store, fetchImpl) {
     + ' wmoOfMetno: wmoOfMetno, fetchForecast: fetchForecast, fetchForecastFrom: fetchForecastFrom, fetchForecastMetno: fetchForecastMetno,'
     + ' fetchForecastCached: fetchForecastCached, saveLastForecast: saveLastForecast, loadLastForecast: loadLastForecast,'
     + ' reverseGeocode: reverseGeocode, refineLocation: refineLocation, geocode: geocode, geocodePhoton: geocodePhoton, locationLabel: locationLabel,'
-    + ' sourceHealth: sourceHealth, sourceReady: sourceReady, markSourceFailed: markSourceFailed, SOURCE_LABELS: SOURCE_LABELS }\n'
+    + ' cloudAdjustedCode: cloudAdjustedCode, geocodeQualifiedVariants: geocodeQualifiedVariants, fetchForecastOpenMeteo: fetchForecastOpenMeteo,'
+     + ' sourceHealth: sourceHealth, sourceReady: sourceReady, markSourceFailed: markSourceFailed, SOURCE_LABELS: SOURCE_LABELS }\n'
     + '    exports.apply = apply')
   const mkEl = () => ({ style: {}, dataset: {}, appendChild() {}, remove() {}, setAttribute() {}, isConnected: false, querySelector: () => null, querySelectorAll: () => [], textContent: '' })
   const document = { createElement: mkEl, querySelector: () => null, querySelectorAll: () => [], head: mkEl(), body: mkEl() }
@@ -300,4 +301,51 @@ test('地点标签插入区/市级 admin2 且顺序正确', () => {
   assert.ok(label.includes('东莞市'), '标签包含 admin2')
   assert.ok(label.indexOf('塘厦镇') < label.indexOf('东莞市'))
   assert.ok(label.indexOf('东莞市') < label.indexOf('广东省'))
+})
+
+test('云量把晴/多云类天气码纠正到更贴近体感的档位', () => {
+  const T = loadClient({})
+  assert.equal(T.cloudAdjustedCode(0, 90), 3)
+  assert.equal(T.cloudAdjustedCode(1, 50), 2)
+  assert.equal(T.cloudAdjustedCode(0, 20), 1)
+  assert.equal(T.cloudAdjustedCode(0, 5), 0)
+  assert.equal(T.cloudAdjustedCode(0, null), 0, '云量缺失时原样返回')
+  assert.equal(T.cloudAdjustedCode(61, 95), 61, '降水类码不被云量改写')
+})
+
+test('复合地名的拆词候选包含「上级 本级」', () => {
+  const T = loadClient({})
+  assert.equal(JSON.stringify(Array.from(T.geocodeQualifiedVariants('梅州兴宁市')).slice(0, 2)), JSON.stringify(['梅州 兴宁市', '梅州兴 宁市']))
+  assert.equal(T.geocodeQualifiedVariants('上海').length, 0)
+})
+
+test('复合地名「梅州兴宁市」拆词后命中 Photon', async () => {
+  const impl = (url) => {
+    const u = new URL(String(url))
+    const key = u.searchParams.get('q') || u.searchParams.get('name') || ''
+    if (u.hostname === 'geocoding-api.open-meteo.com') {
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ results: [] }) })
+    }
+    const hit = key === '梅州 兴宁市' || key === '兴宁市'
+    return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(hit
+      ? { features: [{ properties: { name: '兴宁市', city: '梅州市', state: '广东省', country: '中国' }, geometry: { coordinates: [115.7531534, 24.2579216] } }] }
+      : { features: [] }) })
+  }
+  const T = loadClient({}, impl)
+  const hits = await T.geocode('梅州兴宁市', 8)
+  assert.equal(hits.length, 1)
+  assert.equal(hits[0].name, '兴宁市')
+  assert.equal(hits[0].admin2, '梅州市')
+})
+
+test('主源 Open-Meteo 带 cloud_cover 时纠正天气码并保留云量', async () => {
+  const payload = {
+    current: { time: '2026-11-14T16:00', temperature_2m: 23.7, apparent_temperature: 25, relative_humidity_2m: 82, weather_code: 1, wind_speed_10m: 8, wind_direction_10m: 90, is_day: 1, cloud_cover: 90 },
+    hourly: { time: ['2026-11-14T16:00'], temperature_2m: [23.7] },
+    daily: { time: ['2026-11-14'], weather_code: [1], temperature_2m_max: [26], temperature_2m_min: [20], precipitation_probability_max: [10] },
+  }
+  const T = loadClient({}, fakeFetch({ 'https://api.open-meteo.com/v1/forecast': payload }))
+  const data = await T.fetchForecastOpenMeteo({ name: '塘厦镇', latitude: 22.8, longitude: 114.06 })
+  assert.equal(data.current.cloudCover, 90)
+  assert.equal(data.current.weatherCode, 3)
 })
