@@ -20,6 +20,7 @@ function loadClient(store, fetchImpl) {
     + ' reverseGeocode: reverseGeocode, refineLocation: refineLocation, geocode: geocode, geocodePhoton: geocodePhoton, locationLabel: locationLabel,'
     + ' cloudAdjustedCode: cloudAdjustedCode, geocodeQualifiedVariants: geocodeQualifiedVariants, fetchForecastOpenMeteo: fetchForecastOpenMeteo,'
     + ' mergeHits: mergeHits, LIVE_SEARCH_DELAY_MS: LIVE_SEARCH_DELAY_MS,'
+    + ' loadHistory: loadHistory, pushHistory: pushHistory, clearHistory: clearHistory, LS_HISTORY: LS_HISTORY,'
      + ' sourceHealth: sourceHealth, sourceReady: sourceReady, markSourceFailed: markSourceFailed, SOURCE_LABELS: SOURCE_LABELS }\n'
     + '    exports.apply = apply')
   const mkEl = () => ({ style: {}, dataset: {}, appendChild() {}, remove() {}, setAttribute() {}, isConnected: false, querySelector: () => null, querySelectorAll: () => [], textContent: '' })
@@ -380,4 +381,31 @@ test('输入即搜的防抖间隔是一个短且确定的常量', () => {
   const T = loadClient({})
   assert.equal(typeof T.LIVE_SEARCH_DELAY_MS, 'number')
   assert.ok(T.LIVE_SEARCH_DELAY_MS >= 200 && T.LIVE_SEARCH_DELAY_MS <= 600, '防抖间隔应在 200-600ms 之间')
+})
+
+test('搜索历史：同地点重复记录会去重并置顶，最多 8 条', () => {
+  const store = {}
+  const T = loadClient(store)
+  const mk = (name, lat) => ({ name, admin1: '广东省', country: '中国', latitude: lat, longitude: 114 })
+  for (let i = 0; i < 10; i += 1) T.pushHistory(mk('城市' + i, 20 + i))
+  let list = T.loadHistory()
+  assert.equal(list.length, 8)
+  assert.equal(list[0].name, '城市9')
+  // 再记一次较早的城市，应该置顶且不增加条数
+  T.pushHistory(mk('城市5', 25))
+  list = T.loadHistory()
+  assert.equal(list.length, 8)
+  assert.equal(list[0].name, '城市5')
+  assert.equal(list.filter((x) => x.name === '城市5').length, 1)
+})
+
+test('搜索历史：清空后读到空列表，坏数据不会抛错', () => {
+  const store = {}
+  const T = loadClient(store)
+  T.pushHistory({ name: '塘厦镇', admin1: '广东省', latitude: 22.8, longitude: 114.06 })
+  assert.equal(T.loadHistory().length, 1)
+  T.clearHistory()
+  assert.equal(T.loadHistory().length, 0)
+  store[T.LS_HISTORY] = '{not json'
+  assert.equal(T.loadHistory().length, 0)
 })
