@@ -19,6 +19,7 @@ function loadClient(store, fetchImpl) {
     + ' fetchForecastCached: fetchForecastCached, saveLastForecast: saveLastForecast, loadLastForecast: loadLastForecast,'
     + ' reverseGeocode: reverseGeocode, refineLocation: refineLocation, geocode: geocode, geocodePhoton: geocodePhoton, locationLabel: locationLabel,'
     + ' cloudAdjustedCode: cloudAdjustedCode, geocodeQualifiedVariants: geocodeQualifiedVariants, fetchForecastOpenMeteo: fetchForecastOpenMeteo,'
+    + ' mergeHits: mergeHits, LIVE_SEARCH_DELAY_MS: LIVE_SEARCH_DELAY_MS,'
      + ' sourceHealth: sourceHealth, sourceReady: sourceReady, markSourceFailed: markSourceFailed, SOURCE_LABELS: SOURCE_LABELS }\n'
     + '    exports.apply = apply')
   const mkEl = () => ({ style: {}, dataset: {}, appendChild() {}, remove() {}, setAttribute() {}, isConnected: false, querySelector: () => null, querySelectorAll: () => [], textContent: '' })
@@ -348,4 +349,35 @@ test('主源 Open-Meteo 带 cloud_cover 时纠正天气码并保留云量', asyn
   const data = await T.fetchForecastOpenMeteo({ name: '塘厦镇', latitude: 22.8, longitude: 114.06 })
   assert.equal(data.current.cloudCover, 90)
   assert.equal(data.current.weatherCode, 3)
+})
+
+test('搜「兴宁」时合并两家源，县级市兴宁市排在裸名之前', async () => {
+  // 真实数据形态：Open-Meteo 只给广西南宁的裸名「兴宁」，Photon 才有广东梅州的「兴宁市」。
+  const impl = (url) => {
+    const u = new URL(String(url))
+    if (u.hostname === 'geocoding-api.open-meteo.com') {
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({
+        results: [{ name: '兴宁', latitude: 22.87589, longitude: 108.41992, admin1: '广西', admin2: '南宁市', country: '中国', feature_code: 'PPLA3' }],
+      }) })
+    }
+    return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({
+      features: [
+        { properties: { name: '兴宁市', city: '梅州市', state: '广东省', country: '中国', osm_value: 'county' }, geometry: { coordinates: [115.7531534, 24.2579216] } },
+        { properties: { name: '兴宁区', city: '南宁市', state: '广西壮族自治区', country: '中国', osm_value: 'county' }, geometry: { coordinates: [108.5291283, 22.9450369] } },
+        { properties: { name: '兴宁', city: '江门市', state: '广东省', country: '中国', osm_value: 'hamlet' }, geometry: { coordinates: [112.79603, 22.1292867] } },
+      ],
+    }) })
+  }
+  const T = loadClient({}, impl)
+  const hits = await T.geocode('兴宁', 8)
+  assert.ok(hits.length >= 3, '两家源的结果都要保留')
+  assert.equal(hits[0].name, '兴宁市')
+  assert.equal(hits[0].admin2, '梅州市')
+  assert.equal(hits[0].admin1, '广东省')
+})
+
+test('输入即搜的防抖间隔是一个短且确定的常量', () => {
+  const T = loadClient({})
+  assert.equal(typeof T.LIVE_SEARCH_DELAY_MS, 'number')
+  assert.ok(T.LIVE_SEARCH_DELAY_MS >= 200 && T.LIVE_SEARCH_DELAY_MS <= 600, '防抖间隔应在 200-600ms 之间')
 })
