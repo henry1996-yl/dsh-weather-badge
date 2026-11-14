@@ -17,6 +17,7 @@ function loadClient(store, fetchImpl) {
     + ' locateByIpFrom: locateByIpFrom, currentTime: currentTime, netTime: netTime, syncNetworkTime: syncNetworkTime,'
     + ' wmoOfMetno: wmoOfMetno, fetchForecast: fetchForecast, fetchForecastFrom: fetchForecastFrom, fetchForecastMetno: fetchForecastMetno,'
     + ' fetchForecastCached: fetchForecastCached, saveLastForecast: saveLastForecast, loadLastForecast: loadLastForecast,'
+    + ' reverseGeocode: reverseGeocode, refineLocation: refineLocation, geocode: geocode, geocodePhoton: geocodePhoton, locationLabel: locationLabel,'
     + ' sourceHealth: sourceHealth, sourceReady: sourceReady, markSourceFailed: markSourceFailed, SOURCE_LABELS: SOURCE_LABELS }\n'
     + '    exports.apply = apply')
   const mkEl = () => ({ style: {}, dataset: {}, appendChild() {}, remove() {}, setAttribute() {}, isConnected: false, querySelector: () => null, querySelectorAll: () => [], textContent: '' })
@@ -254,4 +255,49 @@ test('三家源全挂时退回上次成功的缓存并标记离线', async () =>
   assert.equal(cached.stale, true)
   assert.equal(cached.current.temperature, 23.7)
   assert.match(String(cached.staleReason), /all forecast sources failed/)
+})
+test('反向地理编码把座标细化成中文乡镇/街道', async () => {
+  const T = loadClient({}, fakeFetch({
+    'https://api.bigdatacloud.net': {
+      locality: '塘厦镇', city: '东莞市', principalSubdivision: '广东省', countryName: '中华人民共和国',
+    },
+  }))
+  const hit = await T.reverseGeocode(22.8096358, 114.0673398)
+  assert.equal(hit.locality, '塘厦镇')
+  assert.equal(hit.city, '东莞市')
+  assert.equal(hit.subdivision, '广东省')
+  assert.equal(hit.country, '中国')
+  const base = { name: '东莞', admin1: '广东', country: '中国', latitude: 22.8096358, longitude: 114.0673398, via: 'ip' }
+  const finer = await T.refineLocation(base)
+  assert.equal(finer.name, '塘厦镇')
+  assert.equal(finer.admin2, '东莞市')
+  assert.equal(finer.admin1, '广东省')
+  assert.equal(finer.via, 'ip')
+})
+
+test('反向服务不可用时细化定位原样返回同一个对象', async () => {
+  const T = loadClient({}, () => Promise.reject(new Error('offline')))
+  const base = { name: '东莞', latitude: 23.02, longitude: 113.75 }
+  assert.equal(await T.refineLocation(base), base)
+})
+
+test('搜索镇名：Open-Meteo 空结果时落到 Photon 并保留 admin2', async () => {
+  const T = loadClient({}, fakeFetch({
+    'https://geocoding-api.open-meteo.com': { results: [] },
+    'https://photon.komoot.io': { features: [
+      { properties: { name: '塘厦镇', city: '东莞市', state: '广东省', country: '中国' }, geometry: { coordinates: [114.0673398, 22.8096358] } },
+    ] },
+  }))
+  const hits = await T.geocode('塘厦镇', 8)
+  assert.equal(hits.length, 1)
+  assert.equal(hits[0].name, '塘厦镇')
+  assert.equal(hits[0].admin2, '东莞市')
+})
+
+test('地点标签插入区/市级 admin2 且顺序正确', () => {
+  const T = loadClient({})
+  const label = T.locationLabel({ name: '塘厦镇', admin2: '东莞市', admin1: '广东省', country: '中国' })
+  assert.ok(label.includes('东莞市'), '标签包含 admin2')
+  assert.ok(label.indexOf('塘厦镇') < label.indexOf('东莞市'))
+  assert.ok(label.indexOf('东莞市') < label.indexOf('广东省'))
 })
