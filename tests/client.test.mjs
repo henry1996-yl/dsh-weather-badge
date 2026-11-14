@@ -20,7 +20,7 @@ function loadClient(store, fetchImpl) {
     + ' reverseGeocode: reverseGeocode, refineLocation: refineLocation, geocode: geocode, geocodePhoton: geocodePhoton, locationLabel: locationLabel,'
     + ' cloudAdjustedCode: cloudAdjustedCode, geocodeQualifiedVariants: geocodeQualifiedVariants, fetchForecastOpenMeteo: fetchForecastOpenMeteo,'
     + ' mergeHits: mergeHits, LIVE_SEARCH_DELAY_MS: LIVE_SEARCH_DELAY_MS,'
-    + ' loadHistory: loadHistory, pushHistory: pushHistory, clearHistory: clearHistory, LS_HISTORY: LS_HISTORY,'
+    + ' loadHistory: loadHistory, pushHistory: pushHistory, clearHistory: clearHistory, removeHistory: removeHistory, LS_HISTORY: LS_HISTORY,'
      + ' sourceHealth: sourceHealth, sourceReady: sourceReady, markSourceFailed: markSourceFailed, SOURCE_LABELS: SOURCE_LABELS }\n'
     + '    exports.apply = apply')
   const mkEl = () => ({ style: {}, dataset: {}, appendChild() {}, remove() {}, setAttribute() {}, isConnected: false, querySelector: () => null, querySelectorAll: () => [], textContent: '' })
@@ -408,4 +408,20 @@ test('搜索历史：清空后读到空列表，坏数据不会抛错', () => {
   assert.equal(T.loadHistory().length, 0)
   store[T.LS_HISTORY] = '{not json'
   assert.equal(T.loadHistory().length, 0)
+})
+
+test('搜索历史：单项删除只移除对应地点，其余保留顺序', () => {
+  const store = {}
+  const T = loadClient(store)
+  const mk = (name, lat) => ({ name, admin1: '广东省', latitude: lat, longitude: 114 })
+  T.pushHistory(mk('塘厦镇', 22.8))
+  T.pushHistory(mk('兴宁市', 24.13))
+  T.pushHistory(mk('梅州市', 24.28))
+  assert.equal(T.loadHistory().length, 3)
+  const rest = T.removeHistory(mk('兴宁市', 24.13))
+  assert.equal(rest.length, 2)
+  assert.equal(JSON.stringify(rest.map((x) => x.name)), JSON.stringify(['梅州市', '塘厦镇']))
+  assert.equal(T.loadHistory().length, 2)
+  // 删不存在的记录不改动列表
+  assert.equal(T.removeHistory(mk('不存在', 1)).length, 2)
 })
