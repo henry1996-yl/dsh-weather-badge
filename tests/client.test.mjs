@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 const CLIENT = fileURLToPath(new URL('../lib/client.js', import.meta.url))
 
 /** 把整份 client.js 装进 vm，返回被临时暴露出来的内部符号。 */
-function loadClient(store, fetchImpl) {
+function loadClient(store, fetchImpl, events) {
   let code = fs.readFileSync(CLIENT, 'utf8')
   code = code.replace('    exports.apply = apply',
     '    exports.__test = { AnalogClock: AnalogClock, WeatherDial: WeatherDial, DIAL_THEMES: DIAL_THEMES,'
@@ -21,13 +21,14 @@ function loadClient(store, fetchImpl) {
     + ' cloudAdjustedCode: cloudAdjustedCode, geocodeQualifiedVariants: geocodeQualifiedVariants, fetchForecastOpenMeteo: fetchForecastOpenMeteo,'
     + ' mergeHits: mergeHits, LIVE_SEARCH_DELAY_MS: LIVE_SEARCH_DELAY_MS,'
     + ' loadHistory: loadHistory, pushHistory: pushHistory, clearHistory: clearHistory, removeHistory: removeHistory, LS_HISTORY: LS_HISTORY,'
-     + ' sourceHealth: sourceHealth, sourceReady: sourceReady, markSourceFailed: markSourceFailed, SOURCE_LABELS: SOURCE_LABELS }\n'
+     + ' sourceHealth: sourceHealth, sourceReady: sourceReady, markSourceFailed: markSourceFailed, SOURCE_LABELS: SOURCE_LABELS,'
+     + ' REFRESH_MS: REFRESH_MS, FORECAST_UPDATED_EVENT: FORECAST_UPDATED_EVENT }\n'
     + '    exports.apply = apply')
   const mkEl = () => ({ style: {}, dataset: {}, appendChild() {}, remove() {}, setAttribute() {}, isConnected: false, querySelector: () => null, querySelectorAll: () => [], textContent: '' })
   const document = { createElement: mkEl, querySelector: () => null, querySelectorAll: () => [], head: mkEl(), body: mkEl() }
   const window = {
     localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v) }, removeItem: (k) => { delete store[k] } },
-    addEventListener() {}, removeEventListener() {}, dispatchEvent() {},
+    addEventListener() {}, removeEventListener() {}, dispatchEvent(event) { if (events) events.push(event) },
     __ModuleLoader__: { load(entry) { this.entry = entry } },
   }
   const react = {
@@ -375,6 +376,27 @@ test('搜「兴宁」时合并两家源，县级市兴宁市排在裸名之前',
   assert.equal(hits[0].name, '兴宁市')
   assert.equal(hits[0].admin2, '梅州市')
   assert.equal(hits[0].admin1, '广东省')
+})
+
+test('拿到新数据时广播刷新事件，供徽章与面板同步', async () => {
+  const events = []
+  const payload = {
+    current: { time: '2026-11-16T10:00', temperature_2m: 24, apparent_temperature: 25, relative_humidity_2m: 75, weather_code: 3, wind_speed_10m: 6, wind_direction_10m: 90, is_day: 1, cloud_cover: 95 },
+    hourly: { time: ['2026-11-16T10:00'], temperature_2m: [24] },
+    daily: { time: ['2026-11-16'], weather_code: [3], temperature_2m_max: [27], temperature_2m_min: [21], precipitation_probability_max: [20] },
+  }
+  const T = loadClient({}, fakeFetch({ 'https://api.open-meteo.com/v1/forecast': payload }), events)
+  const data = await T.fetchForecastCached({ name: '塘厦镇', latitude: 22.8, longitude: 114.06 }, true)
+  assert.equal(data.current.humidity, 75)
+  const hit = events.filter((e) => e.type === T.FORECAST_UPDATED_EVENT)
+  assert.equal(hit.length, 1, '成功拉到数据后广播一次')
+  assert.equal(hit[0].detail.key, '22.8,114.06')
+  assert.equal(hit[0].detail.data.current.humidity, 75)
+})
+
+test('自动刷新间隔为 10 分钟', () => {
+  const T = loadClient({})
+  assert.equal(T.REFRESH_MS, 10 * 60 * 1000)
 })
 
 test('输入即搜的防抖间隔是一个短且确定的常量', () => {
