@@ -22,7 +22,8 @@ function loadClient(store, fetchImpl, events) {
     + ' mergeHits: mergeHits, LIVE_SEARCH_DELAY_MS: LIVE_SEARCH_DELAY_MS,'
     + ' loadHistory: loadHistory, pushHistory: pushHistory, clearHistory: clearHistory, removeHistory: removeHistory, LS_HISTORY: LS_HISTORY,'
      + ' sourceHealth: sourceHealth, sourceReady: sourceReady, markSourceFailed: markSourceFailed, SOURCE_LABELS: SOURCE_LABELS,'
-     + ' REFRESH_MS: REFRESH_MS, FORECAST_UPDATED_EVENT: FORECAST_UPDATED_EVENT }\n'
+     + ' REFRESH_MS: REFRESH_MS, FORECAST_UPDATED_EVENT: FORECAST_UPDATED_EVENT,'
+     + ' loadWxColors: loadWxColors, useWxColors: useWxColors, LS_WXCOLOR: LS_WXCOLOR, WXCOLOR_CHANGED_EVENT: WXCOLOR_CHANGED_EVENT }\n'
     + '    exports.apply = apply')
   const mkEl = () => ({ style: {}, dataset: {}, appendChild() {}, remove() {}, setAttribute() {}, isConnected: false, querySelector: () => null, querySelectorAll: () => [], textContent: '' })
   const document = { createElement: mkEl, querySelector: () => null, querySelectorAll: () => [], head: mkEl(), body: mkEl() }
@@ -447,3 +448,31 @@ test('搜索历史：单项删除只移除对应地点，其余保留顺序', ()
   // 删不存在的记录不改动列表
   assert.equal(T.removeHistory(mk('不存在', 1)).length, 2)
 })
+
+test('温湿度颜色：默认跟随主题，自定义后写回本地存储', () => {
+  const store = {}
+  const T = loadClient(store)
+  const dump = (v) => JSON.stringify(v)
+  assert.equal(dump(T.loadWxColors()), dump({ temp: '', hum: '' }))
+  store[T.LS_WXCOLOR] = JSON.stringify({ temp: '#ff0000', hum: '#00ff88' })
+  assert.equal(dump(T.loadWxColors()), dump({ temp: '#ff0000', hum: '#00ff88' }))
+  // 坏数据与缺字段都回落成空串（即跟随主题）
+  store[T.LS_WXCOLOR] = '{not json'
+  assert.equal(dump(T.loadWxColors()), dump({ temp: '', hum: '' }))
+  store[T.LS_WXCOLOR] = JSON.stringify({ temp: '#123456' })
+  assert.equal(dump(T.loadWxColors()), dump({ temp: '#123456', hum: '' }))
+})
+
+test('温湿度颜色：自定义色进入表盘，未自定义时用主题色', () => {
+  const store = {}
+  const T = loadClient(store)
+  const plain = ser(T.WeatherDial({ size: 96, shape: 'circle', code: 0, isDay: 1, temperature: 26, humidity: 60 }))
+  assert.ok(plain.includes('fill="#4a3313"'), '默认温度色来自 clear 主题')
+  assert.ok(plain.includes('fill="#2f6fae"'), '默认湿度色是内置蓝')
+  store[T.LS_WXCOLOR] = JSON.stringify({ temp: '#ff0000', hum: '#00ff88' })
+  const custom = ser(T.WeatherDial({ size: 96, shape: 'circle', code: 0, isDay: 1, temperature: 26, humidity: 60 }))
+  assert.ok(custom.includes('fill="#ff0000"'), '自定义温度色生效')
+  assert.ok(custom.includes('fill="#00ff88"'), '自定义湿度色生效')
+  assert.ok(custom.includes('stop-color="#00ff88"'), '湿度进度条跟随自定义色')
+})
+
