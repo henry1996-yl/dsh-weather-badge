@@ -467,12 +467,12 @@ test('温湿度颜色：自定义色进入表盘，未自定义时用主题色',
   const store = {}
   const T = loadClient(store)
   const plain = ser(T.WeatherDial({ size: 96, shape: 'circle', code: 0, isDay: 1, temperature: 26, humidity: 60 }))
-  assert.ok(plain.includes('fill="#4a3313"'), '默认温度色来自 clear 主题')
-  assert.ok(plain.includes('fill="#2f6fae"'), '默认湿度色是内置蓝')
+  assert.ok(plain.includes('"fill":"#4a3313"'), '默认温度色来自 clear 主题')
+  assert.ok(plain.includes('"fill":"#2f6fae"'), '默认湿度色是内置蓝')
   store[T.LS_WXCOLOR] = JSON.stringify({ temp: '#ff0000', hum: '#00ff88' })
   const custom = ser(T.WeatherDial({ size: 96, shape: 'circle', code: 0, isDay: 1, temperature: 26, humidity: 60 }))
-  assert.ok(custom.includes('fill="#ff0000"'), '自定义温度色生效')
-  assert.ok(custom.includes('fill="#00ff88"'), '自定义湿度色生效')
+  assert.ok(custom.includes('"fill":"#ff0000"'), '自定义温度色生效')
+  assert.ok(custom.includes('"fill":"#00ff88"'), '自定义湿度色生效')
   assert.ok(custom.includes('stop-color="#00ff88"'), '湿度进度条跟随自定义色')
 })
 
